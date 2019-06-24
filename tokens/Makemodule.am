@@ -3,3 +3,10 @@ EXTRA_DIST += tokens/libcryptsetup-token.sym
 TOKENS_LDFLAGS = $(AM_LDFLAGS) -no-undefined \
 	-Wl,--version-script=$(top_srcdir)/tokens/libcryptsetup-token.sym \
 	-version-info 0:0:0
+
+if SSHTEST_TOKEN
+libcryptsetup_token_sshtest_la_LDFLAGS = $(TOKENS_LDFLAGS)
+libcryptsetup_token_sshtest_la_SOURCES = tokens/sshtest/libcryptsetup-token-sshtest.c
+libcryptsetup_token_sshtest_la_LIBADD = -lssh libcryptsetup.la @JSON_C_LIBS@
+lib_LTLIBRARIES += libcryptsetup-token-sshtest.la
+endif

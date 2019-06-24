@@ -360,6 +360,10 @@ AC_ARG_ENABLE([udev],
 	AS_HELP_STRING([--disable-udev], [disable udev support]),
 	[], [enable_udev=yes])
 
+AC_ARG_ENABLE([sshtest-token],
+	AS_HELP_STRING([--enable-sshtest-token], [enable build of sshtest-token]))
+AM_CONDITIONAL(SSHTEST_TOKEN, test "x$enable_sshtest_token" = "xyes")
+
 dnl Try to use pkg-config for devmapper, but fallback to old detection
 PKG_CHECK_MODULES([DEVMAPPER], [devmapper >= 1.02.03],, [
 	AC_CHECK_LIB(devmapper, dm_task_set_name,,

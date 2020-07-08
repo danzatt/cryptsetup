@@ -124,3 +124,17 @@ void tools_check_args(const char *action, const struct tools_arg *args, size_t a
 		}
 	}
 }
+
+int tools_find_arg_id_in_args(const char *name, struct tools_arg *args, size_t args_len)
+{
+	int i;
+
+	if (!args)
+		return -EINVAL;
+
+	for (i = 0; i < (int)args_len; i++)
+		if (args[i].name && !strcmp(name, args[i].name))
+			return i;
+
+	return -ENOENT;
+}

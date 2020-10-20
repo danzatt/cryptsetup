@@ -360,9 +360,9 @@ AC_ARG_ENABLE([udev],
 	AS_HELP_STRING([--disable-udev], [disable udev support]),
 	[], [enable_udev=yes])
 
-AC_ARG_ENABLE([sshtest-token],
-	AS_HELP_STRING([--enable-sshtest-token], [enable build of sshtest-token]))
-AM_CONDITIONAL(SSHTEST_TOKEN, test "x$enable_sshtest_token" = "xyes")
+AC_ARG_ENABLE([ssh-token],
+	AS_HELP_STRING([--enable-ssh-token], [enable build of ssh-token]))
+AM_CONDITIONAL(SSHPLUGIN_TOKEN, test "x$enable_ssh_token" = "xyes")
 
 AC_ARG_ENABLE([tpm2-token],
 	AS_HELP_STRING([--enable-tpm2-token], [enable build of TPM2 token]))

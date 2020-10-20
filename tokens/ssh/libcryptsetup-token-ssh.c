@@ -38,12 +38,12 @@
 
 #define PASSWORD_LENGTH 8192
 
-#define TOKEN_NAME "sshtest"
+#define TOKEN_NAME "ssh"
 
-#define SERVER_ARG	"plugin-sshtest-server"
-#define USER_ARG	"plugin-sshtest-user"
-#define PATH_ARG	"plugin-sshtest-path"
-#define KEYPATH_ARG	"plugin-sshtest-keypath"
+#define SERVER_ARG	"plugin-ssh-server"
+#define USER_ARG	"plugin-ssh-user"
+#define PATH_ARG	"plugin-ssh-path"
+#define KEYPATH_ARG	"plugin-ssh-keypath"
 
 #define CREATE_VALID	(1 << 0)
 #define CREATED 	(1 << 1)
@@ -53,7 +53,7 @@
 
 typedef int (*password_cb_func) (char **password);
 
-struct sshtest_context {
+struct sshplugin_context {
 	const char *server;
 	const char *user;
 	const char *path;
@@ -69,7 +69,7 @@ struct sshtest_context {
 
 int crypt_token_handle_init(struct crypt_cli *cli, void **handle)
 {
-	struct sshtest_context *sc;
+	struct sshplugin_context *sc;
 
 	if (!handle)
 		return -EINVAL;
@@ -117,7 +117,7 @@ static json_object *get_token_jobj(struct crypt_device *cd, int token)
 	return json_tokener_parse(json_slot);
 }
 
-static int sshtest_download_password(struct crypt_device *cd, ssh_session ssh,
+static int sshplugin_download_password(struct crypt_device *cd, ssh_session ssh,
 	const char *path, char **password, size_t *password_len)
 {
 	char *pass = NULL;
@@ -191,7 +191,7 @@ out:
 	return r == SSH_OK ? 0 : -EINVAL;
 }
 
-static ssh_session sshtest_session_init(struct crypt_device *cd,
+static ssh_session sshplugin_session_init(struct crypt_device *cd,
 	const char *host, const char *user)
 {
 	int r, port = 22;
@@ -203,7 +203,7 @@ static ssh_session sshtest_session_init(struct crypt_device *cd,
 	ssh_options_set(ssh, SSH_OPTIONS_USER, user);
 	ssh_options_set(ssh, SSH_OPTIONS_PORT, &port);
 
-	crypt_log(cd, CRYPT_LOG_NORMAL, "SSHTEST token initiating ssh session.\n");
+	crypt_log(cd, CRYPT_LOG_NORMAL, "SSH token initiating ssh session.\n");
 
 	r = ssh_connect(ssh);
 	if (r != SSH_OK) {
@@ -234,7 +234,7 @@ out:
 	return ssh;
 }
 
-static int sshtest_public_key_auth(struct crypt_device *cd, ssh_session ssh, const ssh_key pkey)
+static int sshplugin_public_key_auth(struct crypt_device *cd, ssh_session ssh, const ssh_key pkey)
 {
 	int r;
 
@@ -260,7 +260,7 @@ static int sshtest_public_key_auth(struct crypt_device *cd, ssh_session ssh, con
 	return r;
 }
 
-static int SSHTEST_open_pin(struct crypt_device *cd, int token, const char *pin,
+static int SSHPLUGIN_open_pin(struct crypt_device *cd, int token, const char *pin,
 	char **password, size_t *password_len, void *usrptr)
 {
 	int r;
@@ -284,18 +284,18 @@ static int SSHTEST_open_pin(struct crypt_device *cd, int token, const char *pin,
 		return -EAGAIN;
 	}
 
-	ssh = sshtest_session_init(cd, json_object_get_string(jobj_server),
+	ssh = sshplugin_session_init(cd, json_object_get_string(jobj_server),
 				   json_object_get_string(jobj_user));
 	if (!ssh) {
 		ssh_key_free(pkey);
 		return -EINVAL;
 	}
 
-	r = sshtest_public_key_auth(cd, ssh, pkey);
+	r = sshplugin_public_key_auth(cd, ssh, pkey);
 	ssh_key_free(pkey);
 
 	if (r == SSH_AUTH_SUCCESS)
-		r = sshtest_download_password(cd, ssh, json_object_get_string(jobj_path),
+		r = sshplugin_download_password(cd, ssh, json_object_get_string(jobj_path),
 					      password, password_len);
 
 	ssh_disconnect(ssh);
@@ -304,13 +304,13 @@ static int SSHTEST_open_pin(struct crypt_device *cd, int token, const char *pin,
 	return r ? -EINVAL : r;
 }
 
-static int SSHTEST_open(struct crypt_device *cd, int token,
+static int SSHPLUGIN_open(struct crypt_device *cd, int token,
 	char **password, size_t *password_len, void *usrptr)
 {
-	return SSHTEST_open_pin(cd, token, NULL, password, password_len, usrptr);
+	return SSHPLUGIN_open_pin(cd, token, NULL, password, password_len, usrptr);
 }
 
-static void SSHTEST_dump(struct crypt_device *cd, const char *json)
+static void SSHPLUGIN_dump(struct crypt_device *cd, const char *json)
 {
 	json_object *jobj_token, *jobj_server, *jobj_user, *jobj_path, *jobj_keypath;
 	char buf[4096];
@@ -361,7 +361,7 @@ static int plugin_get_arg_value(struct crypt_device *cd, struct crypt_cli *cli, 
 int crypt_token_validate_create_params(struct crypt_device *cd, void *handle) {
 	int r;
 
-	struct sshtest_context *sc = (struct sshtest_context *)handle;
+	struct sshplugin_context *sc = (struct sshplugin_context *)handle;
 
 	if (!sc)
 		return -EINVAL;
@@ -421,7 +421,7 @@ int crypt_token_validate_create_params(struct crypt_device *cd, void *handle) {
 	return 0;
 }
 
-static int sshtest_token_add(struct crypt_device *cd,
+static int sshplugin_token_add(struct crypt_device *cd,
 	int token,
 	const char *server,
 	const char *user,
@@ -467,7 +467,7 @@ out:
 
 int crypt_token_create(struct crypt_device *cd, void *handle) {
 	int r;
-	struct sshtest_context *sc = (struct sshtest_context *)handle;
+	struct sshplugin_context *sc = (struct sshplugin_context *)handle;
 
 	if (!sc)
 		return -EINVAL;
@@ -481,7 +481,7 @@ int crypt_token_create(struct crypt_device *cd, void *handle) {
 	if (sc->status != CREATE_VALID)
 		return -EINVAL;
 
-	r = sshtest_token_add(cd, sc->token, sc->server, sc->user, sc->path, sc->sshkey_path);
+	r = sshplugin_token_add(cd, sc->token, sc->server, sc->user, sc->path, sc->sshkey_path);
 	if (r < 0) {
 		l_err(cd, "Failed to add token.");
 		return r;
@@ -506,8 +506,8 @@ int crypt_token_create(struct crypt_device *cd, void *handle) {
 }
 
 const crypt_token_handler cryptsetup_token_handler = {
-	.name  = "sshtest",
-	.open  = SSHTEST_open,
-	.open_pin = SSHTEST_open_pin,
-	.dump  = SSHTEST_dump,
+	.name  = "ssh",
+	.open  = SSHPLUGIN_open,
+	.open_pin = SSHPLUGIN_open_pin,
+	.dump  = SSHPLUGIN_dump,
 };

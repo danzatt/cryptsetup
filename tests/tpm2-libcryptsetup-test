@@ -8,6 +8,8 @@ PWD="93R4P4pIqAH8"
 TPM_PWD="mymJeD8ivEhE"
 FAST_PBKDF_OPT="--pbkdf pbkdf2 --pbkdf-force-iterations 1000"
 TPM_PCR=8
+TPM_STATE_DIR="./tpm_state"
+TCTI_ARG=""
 
 cleanup() {
 	[ -b /dev/mapper/$DEV_NAME ] && dmsetup remove --retry $DEV_NAME
@@ -16,7 +18,15 @@ cleanup() {
 	    umount -f $MNT_DIR 2>/dev/null
 	    rmdir $MNT_DIR 2>/dev/null
 	fi
-	sleep 2
+
+	if [[ $USE_REAL_TPM -ne 1 ]]; then
+		kill %1
+		sleep 2
+
+		if [ -d "$TPM_STATE_DIR" ] ; then
+		    rm -rf $TPM_STATE_DIR 2>/dev/null
+		fi
+	fi
 }
 
 fail()
@@ -58,7 +68,7 @@ test_sealing()
 
 	echo "TPM supports $1"
 
-	echo -e "$PWD\n$TPM_PWD\n$TPM_PWD" | $CRYPTSETUP --plugin tpm2 --plugin-tpm2-pcr=$TPM_PCR --plugin-tpm2-bank=$1 token add $DEV
+	echo -e "$PWD\n$TPM_PWD\n$TPM_PWD" | $CRYPTSETUP --plugin tpm2 $TCTI_ARG --plugin-tpm2-pcr=$TPM_PCR --plugin-tpm2-bank=$1 token add $DEV
 	[ $? -ne 0 ] && fail "Failed to add TPM2 token sealed to PCR."
 
 	echo $TPM_PWD | $CRYPTSETUP --token-only open $DEV $DEV_NAME
@@ -89,11 +99,19 @@ if [ $(id -u) != 0 ]; then
 	skip "You must be root to run this test, test skipped."
 fi
 
-if [ "`ls /dev/tpm*`" == "" ]; then
-	fail "No TPM device found."
+if [ ! -e /dev/vtpmx ]; then
+	modprobe tpm_vtpm_proxy || skip "Cannot load tpm_vtpm_proxy module."
 fi
 
 [ ! -d $MNT_DIR ] && mkdir $MNT_DIR
+[ ! -d $TPM_STATE_DIR ] && mkdir $TPM_STATE_DIR
+
+if [[ $USE_REAL_TPM -ne 1 ]]; then
+	swtpm chardev --tpm2 --vtpm-proxy --tpmstate dir=$TPM_STATE_DIR > $TPM_STATE_DIR/log&
+	sleep 1
+	TPM_DEVICE_NUMBER=$(cat $TPM_STATE_DIR/log | head -n 1 | grep -o -E '/dev/tpm[0-9]+' | grep -E -o '[0-9]+$')
+	TCTI_ARG=$(echo --plugin-tpm2-tcti="device:/dev/tpmrm$TPM_DEVICE_NUMBER")
+fi
 
 echo "[1] Using tmpfs for image"
 DEV="$MNT_DIR/test.img"
@@ -102,7 +120,7 @@ format
 
 # basic test
 echo "Adding TPM2 token"
-echo -e "$PWD\n$TPM_PWD\n$TPM_PWD" | $CRYPTSETUP --plugin tpm2 token add $DEV
+echo -e "$PWD\n$TPM_PWD\n$TPM_PWD" | $CRYPTSETUP --plugin tpm2 token add $DEV $TCTI_ARG
 [ $? -ne 0 ] && fail "Failed to add TPM2 token."
 
 echo "Opening using TPM2 token"

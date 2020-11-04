@@ -37,6 +37,10 @@ if TPM2_TOKEN
 TESTS += tpm2-test tpm2-libcryptsetup-test
 endif
 
+if SSHPLUGIN_TOKEN
+TESTS += ssh-plugin-test
+endif
+
 EXTRA_DIST = compatimage.img.xz compatv10image.img.xz \
 	compatimage2.img.xz \
 	conversion_imgs.tar.xz \
@@ -78,7 +82,8 @@ EXTRA_DIST = compatimage.img.xz compatv10image.img.xz \
 	bitlk-compat-test \
 	bitlk-images.tar.xz \
 	tpm2-test \
-	tpm2-libcryptsetup-test
+	tpm2-libcryptsetup-test \
+	ssh-plugin-test
 
 CLEANFILES = cryptsetup-tst* valglog* *-fail-*.log
 clean-local:
